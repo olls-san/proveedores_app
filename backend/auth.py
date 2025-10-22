@@ -8,16 +8,13 @@ from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 
-from . import models
+from .models import Supplier  # 👈 ya no pasa por backend/__init__.py
+from .database import get_db
 
-# ==== CONFIG JWT ====
-# SUGERENCIA: en Render define SECRET_KEY como variable de entorno y léela con os.getenv.
-SECRET_KEY = "change-me-in-env"
+SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-env")  # lee del entorno
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
 
-# ==== HASHING ====
-# bcrypt_sha256 evita el límite de 72 bytes en contraseñas largas.
 pwd_context = CryptContext(
     schemes=["bcrypt_sha256", "bcrypt"],
     deprecated="auto",
@@ -34,15 +31,10 @@ def get_password_hash(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
-# ==== LOOKUP USUARIO ====
-def get_user_by_email(db: Session, email: str) -> Optional[models.Supplier]:
-    return db.query(models.Supplier).filter(models.Supplier.email == email).first()
+def get_user_by_email(db: Session, email: str) -> Optional[Supplier]:
+    return db.query(Supplier).filter(Supplier.email == email).first()
 
-# ==== AUTENTICACIÓN ====
-def authenticate_user(db: Session, email: str, password: str) -> Optional[models.Supplier]:
-    """
-    Devuelve el Supplier si las credenciales son válidas; de lo contrario, None.
-    """
+def authenticate_user(db: Session, email: str, password: str) -> Optional[Supplier]:
     user = get_user_by_email(db, email)
     if not user:
         return None
@@ -50,7 +42,6 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[models
         return None
     return user
 
-# ==== TOKENS ====
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
