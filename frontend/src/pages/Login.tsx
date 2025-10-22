@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { login } from '../services/api';
 
 const LoginPage: React.FC = () => {
@@ -36,6 +36,7 @@ const LoginPage: React.FC = () => {
           onChange={(e) => setEmail(e.target.value)}
           required
         />
+
         <label htmlFor="password">Contraseña</label>
         <input
           id="password"
@@ -44,11 +45,20 @@ const LoginPage: React.FC = () => {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
+
         {error && <p style={{ color: 'red' }}>{error}</p>}
+
         <button type="submit" disabled={loading}>
           {loading ? 'Ingresando...' : 'Ingresar'}
         </button>
       </form>
+
+      <p style={{ marginTop: '1rem' }}>
+        ¿No tienes cuenta?{' '}
+        <Link to="/register" style={{ color: '#0d6efd' }}>
+          Crea una nueva cuenta
+        </Link>
+      </p>
     </div>
   );
 };
