@@ -1,81 +1,69 @@
 import axios from 'axios';
 
-// Create an Axios instance with sensible defaults. You can extend this to
-// automatically include the Authorization header when a token is present.
-const apiClient = axios.create({
-  headers: {
-    'Content-Type': 'application/json',
-  },
+const rawBase = import.meta.env.VITE_API_BASE?.trim();
+
+// Normaliza: quita slash al final
+const baseURL = rawBase ? rawBase.replace(/\/+$/, '') : '';
+
+if (!baseURL) {
+  // Ayuda visual en tiempo de desarrollo / build
+  // (no detiene la app, pero deja claro el problema)
+  // eslint-disable-next-line no-console
+  console.warn(
+    '[API] VITE_API_BASE no está definido. Las peticiones irán al mismo origen del frontend y fallarán en producción.'
+  );
+}
+
+export const api = axios.create({
+  baseURL, // ejemplo: https://proveedores-backend.onrender.com
+  // timeout: 20000, // opcional
 });
 
-// Add a request interceptor to include the JWT token when available
-apiClient.interceptors.request.use((config) => {
+api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
-    config.headers = config.headers ?? {};
-    config.headers['Authorization'] = `Bearer ${token}`;
+    config.headers = config.headers || {};
+    (config.headers as any).Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// Authentication
+// Helpers de endpoints (ajusta si tu backend tiene prefijo /api)
 export async function login(email: string, password: string) {
-  // The FastAPI OAuth2PasswordRequestForm expects fields named ``username`` and ``password``.
-  const params = new URLSearchParams();
-  params.append('username', email);
-  params.append('password', password);
-  const response = await apiClient.post('/auth/login', params, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  });
-  return response.data;
+  const { data } = await api.post('/auth/login', { email, password });
+  return data; // { access_token, token_type }
 }
 
 export async function register(
   email: string,
   password: string,
   name: string,
-  supplierId: number,
+  supplierIdTecopos: number
 ) {
-  const response = await apiClient.post('/auth/register', {
+  const { data } = await api.post('/auth/register', {
     email,
     password,
     name,
-    supplierIdTecopos: supplierId,
+    supplierIdTecopos, // coincide con el backend
   });
-  return response.data;
+  return data;
 }
 
-// Sales
-export async function fetchSales(
-  dateFrom: string,
-  dateTo: string,
-  supplierId: number,
-) {
-  const response = await apiClient.get('/sales', {
-    params: { dateFrom, dateTo, supplierId },
-  });
-  return response.data;
+export async function me() {
+  const { data } = await api.get('/me');
+  return data;
 }
 
-// Conciliations
-export async function createConciliation(saleId: number) {
-  const response = await apiClient.post('/conciliations', { sale_id: saleId });
-  return response.data;
+export async function getConciliations() {
+  const { data } = await api.get('/conciliations');
+  return data;
 }
 
-export async function listConciliations() {
-  const response = await apiClient.get('/conciliations');
-  return response.data;
-}
-
-// Inventory
-export async function getInventory() {
-  const response = await apiClient.get('/inventory');
-  return response.data;
-}
-
-// Current user
-export async function getCurrentUser() {
-  const response = await apiClient.get('/me');
-  return response.data;
+export async function getSales(params: {
+  dateFrom: string;
+  dateTo: string;
+  status?: string;
+}) {
+  const { data } = await api.get('/sales', { params });
+  return data;
 }
