@@ -12,6 +12,7 @@ from typing import List, Optional
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
+from .auth import authenticate_user, create_access_token, get_current_user_id
 
 from sqlalchemy.orm import Session
 
