@@ -65,17 +65,40 @@ export async function getInventory() {
 export async function getSales(params: {
   dateFrom: string;
   dateTo: string;
+  supplierId: number;
   status?: string;
 }) {
-  const { data } = await api.get('/sales', { params }); // o '/api/sales'
+  // When calling the sales endpoint we need to supply the supplierId and date range
+  // Example backend URL: /sales?dateFrom=2025-10-01%2000:00&dateTo=2025-10-19%2000:00&supplierId=362
+  const { dateFrom, dateTo, supplierId, ...rest } = params;
+  const query = { dateFrom, dateTo, supplierId, ...rest };
+  const { data } = await api.get('/sales', { params: query }); // or '/api/sales'
   return data;
 }
 
-// Alias para que compile Dashboard.tsx
-export async function fetchSales(params: {
-  dateFrom: string;
-  dateTo: string;
-  status?: string;
-}) {
-  return getSales(params);
+/**
+ * Alias to fetch sales data using positional arguments.
+ *
+ * The dashboard calls `fetchSales(dateFrom, dateTo, supplierId)`,
+ * so we provide this helper to bridge that call signature.
+ */
+export async function fetchSales(
+  dateFrom: string,
+  dateTo: string,
+  supplierId: number,
+  status?: string
+) {
+  return getSales({ dateFrom, dateTo, supplierId, status });
+}
+
+/**
+ * Create a conciliation entry for a given sale ID.
+ *
+ * This calls the POST /conciliations endpoint on the backend.
+ *
+ * @param saleId The ID of the sale record to consolidate.
+ */
+export async function createConciliation(saleId: number) {
+  const { data } = await api.post('/conciliations', { sale_id: saleId });
+  return data;
 }
