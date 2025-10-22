@@ -1,24 +1,17 @@
 import axios from 'axios';
 
 const rawBase = import.meta.env.VITE_API_BASE?.trim();
-
-// Normaliza: quita slash al final
 const baseURL = rawBase ? rawBase.replace(/\/+$/, '') : '';
 
 if (!baseURL) {
-  // Ayuda visual en tiempo de desarrollo / build
-  // (no detiene la app, pero deja claro el problema)
-  // eslint-disable-next-line no-console
-  console.warn(
-    '[API] VITE_API_BASE no está definido. Las peticiones irán al mismo origen del frontend y fallarán en producción.'
-  );
+  console.warn('[API] VITE_API_BASE no está definido. Las peticiones usarán el mismo origen y fallarán en prod.');
 }
 
 export const api = axios.create({
-  baseURL, // ejemplo: https://proveedores-backend.onrender.com
-  // timeout: 20000, // opcional
+  baseURL, // Ej: https://proveedores-backend.onrender.com
 });
 
+// Inyecta token si existe
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -28,10 +21,10 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Helpers de endpoints (ajusta si tu backend tiene prefijo /api)
+// ------- AUTH -------
 export async function login(email: string, password: string) {
   const { data } = await api.post('/auth/login', { email, password });
-  return data; // { access_token, token_type }
+  return data as { access_token: string; token_type: 'bearer' };
 }
 
 export async function register(
@@ -44,18 +37,30 @@ export async function register(
     email,
     password,
     name,
-    supplierIdTecopos, // coincide con el backend
+    supplierIdTecopos,
   });
   return data;
 }
 
+// Antes tenías "me()"; mantenlo y añade un alias "getCurrentUser()"
 export async function me() {
-  const { data } = await api.get('/me');
+  const { data } = await api.get('/me'); // si tu backend usa prefijo, cambia a '/api/me'
   return data;
 }
 
-export async function getConciliations() {
-  const { data } = await api.get('/conciliations');
+export async function getCurrentUser() {
+  // Alias para que Dashboard.tsx compile
+  return me();
+}
+
+// ------- DATA -------
+export async function listConciliations() {
+  const { data } = await api.get('/conciliations'); // o '/api/conciliations'
+  return data;
+}
+
+export async function getInventory() {
+  const { data } = await api.get('/inventory'); // o '/api/inventory'
   return data;
 }
 
@@ -64,6 +69,7 @@ export async function getSales(params: {
   dateTo: string;
   status?: string;
 }) {
-  const { data } = await api.get('/sales', { params });
+  const { data } = await api.get('/sales', { params }); // o '/api/sales'
   return data;
 }
+
