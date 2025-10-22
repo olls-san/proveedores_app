@@ -4,14 +4,12 @@ const rawBase = import.meta.env.VITE_API_BASE?.trim();
 const baseURL = rawBase ? rawBase.replace(/\/+$/, '') : '';
 
 if (!baseURL) {
-  console.warn('[API] VITE_API_BASE no está definido. Las peticiones usarán el mismo origen y fallarán en prod.');
+  console.warn('[API] VITE_API_BASE no está definido. Las peticiones usarán el mismo origen.');
 }
 
-export const api = axios.create({
-  baseURL, // Ej: https://proveedores-backend.onrender.com
-});
+export const api = axios.create({ baseURL });
 
-// Inyecta token si existe
+// Inyecta token
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -21,7 +19,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// ------- AUTH -------
+// ===== AUTH =====
 export async function login(email: string, password: string) {
   const { data } = await api.post('/auth/login', { email, password });
   return data as { access_token: string; token_type: 'bearer' };
@@ -42,18 +40,17 @@ export async function register(
   return data;
 }
 
-// Antes tenías "me()"; mantenlo y añade un alias "getCurrentUser()"
 export async function me() {
   const { data } = await api.get('/me'); // si tu backend usa prefijo, cambia a '/api/me'
   return data;
 }
 
+// Alias para no tocar Dashboard.tsx
 export async function getCurrentUser() {
-  // Alias para que Dashboard.tsx compile
   return me();
 }
 
-// ------- DATA -------
+// ===== DATA =====
 export async function listConciliations() {
   const { data } = await api.get('/conciliations'); // o '/api/conciliations'
   return data;
@@ -64,6 +61,7 @@ export async function getInventory() {
   return data;
 }
 
+// Nombre “oficial”
 export async function getSales(params: {
   dateFrom: string;
   dateTo: string;
@@ -73,3 +71,11 @@ export async function getSales(params: {
   return data;
 }
 
+// Alias para que compile Dashboard.tsx
+export async function fetchSales(params: {
+  dateFrom: string;
+  dateTo: string;
+  status?: string;
+}) {
+  return getSales(params);
+}
