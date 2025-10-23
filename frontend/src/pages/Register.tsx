@@ -4,7 +4,7 @@ import { register } from '../services/api';
 
 /**
  * Página de creación de cuenta para proveedores.
- * Permite registrar nombre, email, contraseña e ID del proveedor.
+ * Permite registrar nombre, email y contraseña. La vinculación con Tecopos se realiza más adelante.
  * Tras el registro, redirige a la pantalla de login.
  */
 const RegisterPage: React.FC = () => {
@@ -12,20 +12,15 @@ const RegisterPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
-  const [supplierId, setSupplierId] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!supplierId) {
-      setError('Debe indicar el ID de proveedor');
-      return;
-    }
     setError('');
     setLoading(true);
     try {
-      await register(email, password, name, Number(supplierId));
+      await register(email, password, name);
       // Se redirige a la pantalla de login al terminar
       navigate('/login', { replace: true });
     } catch {
@@ -63,14 +58,7 @@ const RegisterPage: React.FC = () => {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
-        <label htmlFor="supplierId">ID de Proveedor</label>
-        <input
-          id="supplierId"
-          type="number"
-          value={supplierId}
-          onChange={(e) => setSupplierId(e.target.value)}
-          required
-        />
+        {/* El ID del proveedor en Tecopos ya no se solicita en el registro. */}
         {error && <p style={{ color: 'red' }}>{error}</p>}
         <button type="submit" disabled={loading}>
           {loading ? 'Registrando...' : 'Registrar'}

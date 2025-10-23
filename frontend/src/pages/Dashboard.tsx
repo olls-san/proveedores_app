@@ -1,21 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  fetchSales,
-  createConciliation,
+  // Eliminado: fetchSales (endpoint legacy no usado)
+  // Eliminado: createConciliation (la conciliación no está implementada en esta versión)
   listConciliations,
   getInventory,
   getCurrentUser,
+  fetchSalesPeriod,
 } from '../services/api';
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface ProductRow {
-  productId: number;
+  productId: string;
   name: string;
-  quantitySales: number;
-  totalQuantity: number;
-  totalSales: number;
-  totalSalesMainCurrency: number;
+  /** Unidades vendidas en el periodo */
+  quantity: number;
+  /** Monto total recaudado por este producto en el periodo */
+  totalAmount: number;
+  /** Código ISO o texto de la moneda, si lo provee Tecopos */
+  currency?: string | null;
 }
 
 interface ConciliationItem {
@@ -37,11 +40,10 @@ interface InventoryItem {
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const [supplierId, setSupplierId] = useState<number | ''>('');
+  // Ya no se solicita el ID de proveedor manualmente.
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [loading, setLoading] = useState(false);
-  const [saleId, setSaleId] = useState<number | null>(null);
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [totalSales, setTotalSales] = useState(0);
   const [totalUnits, setTotalUnits] = useState(0);
@@ -56,7 +58,6 @@ const DashboardPage: React.FC = () => {
       try {
         const user = await getCurrentUser();
         setMe(user);
-        setSupplierId(user.supplierIdTecopos);
       } catch (err) {
         // If token invalid, redirect to login
         navigate('/login');
@@ -74,24 +75,30 @@ const DashboardPage: React.FC = () => {
         console.error(err);
       }
     })();
-  }, [saleId]);
+  }, []);
 
   const handleFetchSales = async () => {
-    if (!dateFrom || !dateTo || !supplierId) {
-      setError('Debe completar proveedor y fechas.');
+    if (!dateFrom || !dateTo) {
+      setError('Debe completar las fechas.');
       return;
     }
     setError('');
     setLoading(true);
     try {
-      const response = await fetchSales(dateFrom, dateTo, Number(supplierId));
-      setSaleId(response.saleId);
-      setProducts(
-        [...response.products].sort((a: ProductRow, b: ProductRow) => b.quantitySales - a.quantitySales),
-      );
-      setTotalSales(response.totalSales);
-      setTotalUnits(response.totalUnits);
-      // Load inventory
+      const response = await fetchSalesPeriod(dateFrom, dateTo);
+      // Mapear los items al formato esperado
+      const items: ProductRow[] = (response.data || []).map((it: any) => ({
+        productId: it.product_id,
+        name: it.product_name,
+        quantity: it.quantity,
+        totalAmount: it.total_amount,
+        currency: it.currency,
+      }));
+      // Ordenar por cantidad descendente
+      setProducts(items.sort((a, b) => b.quantity - a.quantity));
+      setTotalSales(response.total_sales);
+      setTotalUnits(response.total_units);
+      // Cargar inventario (opcional)
       const inv = await getInventory();
       setInventory(inv);
     } catch (err: any) {
@@ -102,28 +109,14 @@ const DashboardPage: React.FC = () => {
   };
 
   const handleSaveConciliation = async () => {
-    if (!saleId) return;
-    try {
-      await createConciliation(saleId);
-      const updated = await listConciliations();
-      setConciliations(updated);
-    } catch (err) {
-      setError('Error al guardar conciliación.');
-    }
+    // La lógica de conciliación requiere datos agregados, no implementada en esta versión.
   };
 
   return (
     <div className="container">
       <h1>Dashboard del Proveedor</h1>
       <div style={{ marginBottom: '1rem' }}>
-        <label htmlFor="supplierId">Proveedor (ID)</label>
-        <input
-          id="supplierId"
-          type="number"
-          value={supplierId}
-          onChange={(e) => setSupplierId(e.target.value ? Number(e.target.value) : '')}
-          disabled={me !== null}
-        />
+        {/* Ya no es necesario introducir un ID de proveedor manualmente */}
         <label htmlFor="dateFrom">Desde</label>
         <input
           id="dateFrom"
@@ -142,14 +135,10 @@ const DashboardPage: React.FC = () => {
         <button onClick={handleFetchSales} disabled={loading}>
           {loading ? 'Consultando...' : 'Consultar ventas'}
         </button>
-        {saleId && (
-          <button onClick={handleSaveConciliation} style={{ backgroundColor: '#198754' }}>
-            Guardar conciliación
-          </button>
-        )}
+        {/* La funcionalidad de conciliación no está disponible en esta versión */}
       </div>
       {/* Summary metrics */}
-      {saleId && (
+      {products.length > 0 && (
         <div className="summary-cards">
           <div className="card">
             <h3>Productos con venta</h3>
@@ -178,9 +167,9 @@ const DashboardPage: React.FC = () => {
               <tr>
                 <th>ID</th>
                 <th>Nombre</th>
-                <th>Cantidad de ventas</th>
-                <th>Total unidades</th>
-                <th>Ventas (CUP)</th>
+                <th>Unidades vendidas</th>
+                <th>Monto total</th>
+                <th>Moneda</th>
               </tr>
             </thead>
             <tbody>
@@ -188,9 +177,9 @@ const DashboardPage: React.FC = () => {
                 <tr key={prod.productId}>
                   <td>{prod.productId}</td>
                   <td>{prod.name}</td>
-                  <td>{prod.quantitySales}</td>
-                  <td>{prod.totalQuantity}</td>
-                  <td>{prod.totalSalesMainCurrency.toFixed(2)}</td>
+                  <td>{prod.quantity}</td>
+                  <td>{prod.totalAmount.toFixed(2)}</td>
+                  <td>{prod.currency || '-'}</td>
                 </tr>
               ))}
             </tbody>

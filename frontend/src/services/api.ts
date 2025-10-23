@@ -28,14 +28,14 @@ export async function login(email: string, password: string) {
 export async function register(
   email: string,
   password: string,
-  name: string,
-  supplierIdTecopos: number
+  name: string
 ) {
+  // El registro ya no requiere el ID de proveedor de Tecopos. La vinculación
+  // se realiza posteriormente mediante la integración.
   const { data } = await api.post('/auth/register', {
     email,
     password,
     name,
-    supplierIdTecopos,
   });
   return data;
 }
@@ -100,5 +100,50 @@ export async function fetchSales(
  */
 export async function createConciliation(saleId: number) {
   const { data } = await api.post('/conciliations', { sale_id: saleId });
+  return data;
+}
+
+// ===== Tecopos Integration =====
+
+/**
+ * Obtiene las regiones disponibles desde el backend.
+ */
+export async function getRegions() {
+  const { data } = await api.get('/regions');
+  return data;
+}
+
+/**
+ * Guarda el token de Tecopos y vincula el negocio. Los nombres de los campos
+ * deben coincidir con el esquema SaveTecoposTokenRequest.
+ */
+export async function saveTecoposToken(region: string, businessName: string, accessToken: string) {
+  const { data } = await api.post('/me/tecopos/save-token', {
+    region,
+    business_name: businessName,
+    access_token: accessToken,
+  });
+  return data;
+}
+
+/**
+ * Vincula al usuario autenticado con su proveedor en Tecopos usando el nombre.
+ */
+export async function linkTecoposSupplier(supplierName: string) {
+  const { data } = await api.post('/me/link-tecopos-supplier', {
+    supplier_name: supplierName,
+  });
+  return data;
+}
+
+/**
+ * Consulta las ventas de un periodo para el proveedor autenticado.
+ * Envía las fechas como cuerpo de la petición.
+ */
+export async function fetchSalesPeriod(dateFrom: string, dateTo: string) {
+  const { data } = await api.post('/sales/period', {
+    date_from: dateFrom,
+    date_to: dateTo,
+  });
   return data;
 }
