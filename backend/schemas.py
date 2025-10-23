@@ -6,9 +6,10 @@ separated from the ORM models to avoid accidental leakage of internal
 database state and to provide input validation.
 """
 
+# backend/schemas.py
 from datetime import datetime
 from typing import List, Optional
-
+from pydantic import BaseModel, Field, ConfigDict
 from pydantic import BaseModel, Field, ConfigDict
 
 
@@ -27,95 +28,67 @@ class TokenData(BaseModel):
     email: Optional[str] = None
 
 
-# ----------------------------
-# Supplier
-# ----------------------------
-class SupplierBase(BaseModel):
-    """Base attributes shared by supplier models."""
+# -------- Supplier --------
+class SupplierCreate(BaseModel):
     email: str
     name: str
-    supplier_id_tecopos: int = Field(..., alias="supplierIdTecopos")
-
-    # Pydantic v2 config
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
-
-
-class SupplierCreate(SupplierBase):
-    """Attributes required to register a new supplier."""
+    supplierIdTecopos: int = Field(..., description="ID usado en Tecopos")
     password: str
 
 
-class SupplierResponse(SupplierBase):
-    """Public representation of a supplier."""
-    id: int
-    created_at: datetime
-
-    # Inherit v2 config and ensure ORM support
+class SupplierResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-
-# ----------------------------
-# Sales
-# ----------------------------
-class SaleProduct(BaseModel):
-    """Representation of a single product's sales for the UI."""
-    productId: int
+    id: int
+    email: str
     name: str
-    quantitySales: int
-    totalQuantity: int
-    totalSales: float
-    totalSalesMainCurrency: Optional[float] = None
-
-    model_config = ConfigDict(from_attributes=True)
+    supplierIdTecopos: int = Field(..., alias="supplierIdTecopos")
+    created_at: datetime
 
 
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+# -------- Sales --------
 class SaleResponse(BaseModel):
-    """Returned when a sale query is performed.
-
-    ``saleId`` is returned so that the client can reference this sale when
-    creating a conciliation. Without it, the client would have to query
-    the list of sales to obtain the most recent record.
-    """
-    saleId: int
-    products: List[SaleProduct]
-    totalSales: float
-    totalUnits: int
-
-    model_config = ConfigDict(from_attributes=True)
+    # Resumen para dashboard
+    totalSales: float = 0.0
+    totalUnits: float = 0.0
+    dateFrom: Optional[datetime] = None
+    dateTo: Optional[datetime] = None
+    # Campo opcional por si devuelves el JSON crudo
+    data: Optional[dict] = None
 
 
-# ----------------------------
-# Conciliations
-# ----------------------------
+# -------- Conciliations --------
 class ConciliationCreate(BaseModel):
-    """Body for creating a conciliation from an existing sale."""
-    # Accept camelCase from client while keeping snake_case internally if needed
-    sale_id: int = Field(..., alias="saleId")
-
-    model_config = ConfigDict(populate_by_name=True)
+    rangeLabel: str
+    orders: int = 0
+    salesQty: int = 0
+    revenue: float = 0.0
+    discounts: float = 0.0
 
 
 class ConciliationResponse(BaseModel):
-    """Representation of a conciliation record for the UI."""
     id: int
-    range_label: str
+    supplierId: int = Field(..., alias="supplier_id")
+    rangeLabel: str
     orders: int
-    sales_qty: int
+    salesQty: int
     revenue: float
     discounts: float
     total: float
     created_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
 
-
-# ----------------------------
-# Inventory
-# ----------------------------
+# -------- Inventory --------
 class InventoryItem(BaseModel):
-    """Simplified representation of an inventory snapshot."""
-    product_id: int
+    productId: int
     name: str
-    total_quantity: int
+    totalQuantity: int
 
-    model_config = ConfigDict(from_attributes=True)
+
+class InventoryResponse(BaseModel):
+    items: List[InventoryItem] = []
